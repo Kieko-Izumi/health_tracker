@@ -1,10 +1,4 @@
-# Project: Diet Tracker - Flask backend + index.html
-# Files included in this single document (copy each into corresponding file/folder):
-
-# 1) app.py  (Flask backend)
-# 2) templates/index.html  (front page)
-# 3) requirements.txt
-# 4) README_RUN.md
+# Project:health-Tracker - Flask backend + index.html
 
 # -------------------------
 # app.py
@@ -644,4 +638,5 @@ def image_recognition_placeholder(image_path):
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 
