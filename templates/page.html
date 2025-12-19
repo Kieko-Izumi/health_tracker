@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HealthyTrack — Lightweight Neon</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="#">HealthyTrack</a>
+      <nav class="nav">
+        <a href="#card">Nutrition card</a>
+        <a href="#tracker">Daily tracker</a>
+        <a href="#quiz">Quiz</a>
+      </nav>
+      <div class="auth-controls" id="authControls">
+        <!-- populated by JS -->
+      </div>
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Nutrition Card: camera upload + search list -->
+    <section id="card" class="card">
+      <h2 class="neon-title">AI & Camera powered nutrition card</h2>
+      <p class="muted">Upload an image of a single food item or choose a popular Indian dish to view macros and calories.</p>
+
+      <div class="card-row">
+        <div class="upload-block">
+          <label class="file-label">
+            <input type="file" accept="image/*" capture="environment" id="imageInput" name="imageInput" />
+            <span class="file-btn">📷 Use camera / Upload</span>
+          </label>
+          <div class="preview">
+            <img id="previewImg" alt="preview" />
+          </div>
+          <div class="actions">
+            <button id="analyzeBtn" class="btn primary" name="analyze">Analyze image (AI)</button>
+            <button id="clearImgBtn" class="btn ghost">Clear</button>
+          </div>
+        </div>
+
+        <div class="search-block">
+          <label class="label-text">Search popular dishes</label>
+          <input id="dishSearch" class="input" placeholder="e.g., dal, roti, biryani" name="dishSearch" />
+          <div id="dishList" class="dish-list">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div id="nutritionCard" class="nutrition-card">
+        <p class="muted small">No card yet. Upload an image or select a dish.</p>
+      </div>
+    </section>
+
+    <!-- Daily tracker: entries + summary + chart -->
+    <section id="tracker" class="card">
+      <h2 class="neon-title">Daily tracker & analysis</h2>
+      <p class="muted">Log your meals. We’ll total calories and macros against your goal.</p>
+
+      <form id="addForm" class="form" name="addForm" method="POST" action="/api/log_food">
+        <div class="row">
+          <label>
+            <span class="label-text">Food</span>
+            <input id="foodName" class="input" placeholder="e.g., Dal Tadka" required name="foodName" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            <span class="label-text">Calories</span>
+            <input id="calories" class="input" type="number" min="0" value="0" name="calories" />
+          </label>
+          <label>
+            <span class="label-text">Protein g</span>
+            <input id="protein" class="input" type="number" min="0" value="0" name="protein" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            <span class="label-text">Carbs g</span>
+            <input id="carbs" class="input" type="number" min="0" value="0" name="carbs" />
+          </label>
+          <label>
+            <span class="label-text">Fat g</span>
+            <input id="fat" class="input" type="number" min="0" value="0" name="fat" />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Add to day</button>
+          <button type="button" id="clearDayBtn" class="btn ghost">Clear day</button>
+        </div>
+      </form>
+
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-value" id="sumCal">0</div><div class="stat-label">Calories</div></div>
+        <div class="stat"><div class="stat-value" id="sumPro">0</div><div class="stat-label">Protein g</div></div>
+        <div class="stat"><div class="stat-value" id="sumCarb">0</div><div class="stat-label">Carbs g</div></div>
+        <div class="stat"><div class="stat-value" id="sumFat">0</div><div class="stat-label">Fat g</div></div>
+      </div>
+
+      <div class="goal-row">
+        <label class="label-text">Calorie goal</label>
+        <input id="goalInput" class="input small" type="number" min="0" value="2000" name="goal" />
+        <button id="setGoalBtn" class="btn ghost">Set</button>
+      </div>
+
+      <div class="bars">
+        <div class="bar">
+          <span>Protein</span><div class="bar-track"><div id="barPro" class="bar-fill"></div></div>
+        </div>
+        <div class="bar">
+          <span>Carbs</span><div class="bar-track"><div id="barCarb" class="bar-fill"></div></div>
+        </div>
+        <div class="bar">
+          <span>Fat</span><div class="bar-track"><div id="barFat" class="bar-fill"></div></div>
+        </div>
+        <div class="bar">
+          <span>Calories vs goal</span><div class="bar-track"><div id="barCal" class="bar-fill"></div></div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Today's entries</h3>
+      <div id="entries" class="entries">
+        <p class="muted small">No entries yet.</p>
+      </div>
+    </section>
+
+    <!-- Quiz -->
+    <section id="quiz" class="card">
+      <h2 class="neon-title">Nutrition knowledge quiz</h2>
+      <p class="muted">10 questions. Scores saved per user.</p>
+      <div id="quizArea">
+        <div id="quizIntro">
+          <button id="startQuiz" class="btn primary">Start quiz</button>
+        </div>
+        <div id="quizQ" class="quizQ" hidden>
+          <div id="qText" class="q-text"></div>
+          <div id="qOpts" class="q-opts"></div>
+          <div class="form-actions">
+            <button id="nextQ" class="btn primary">Next</button>
+            <button id="quitQ" class="btn ghost">Quit</button>
+          </div>
+        </div>
+        <div id="quizResult" hidden>
+          <h3 class="section-title">Result</h3>
+          <p id="scoreText"></p>
+          <button id="retakeQ" class="btn primary">Retake</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="muted small">© <span id="year"></span> HealthyTrack — prototype</p>
+    </div>
+  </footer>
+
+  <!-- Auth modal -->
+  <div id="authModal" class="modal" hidden>
+    <div class="modal-card">
+      <button id="closeAuth" class="modal-close" aria-label="Close">✕</button>
+      <h3 id="authTitle">Login</h3>
+      <form id="authForm" name="authForm" method="POST" action="/login">
+        <label><span class="label-text">Username</span><input id="authUser" class="input" required name="username" /></label>
+        <label><span class="label-text">Password</span><input id="authPass" class="input" type="password" required name="password" /></label>
+        <div class="form-actions">
+          <button type="submit" id="authSubmit" class="btn primary">Login</button>
+          <button type="button" id="switchMode" class="btn ghost">Switch to Sign up</button>
+        </div>
+      </form>
+      <div id="authMsg" class="muted small"></div>
+    </div>
+  </div>
+
+  <script src="/static/auth.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
+

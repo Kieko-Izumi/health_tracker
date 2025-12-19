@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HealthyTrack — Main</title>
+  <link rel="stylesheet" href="/static/styles (2).css" />
+</head>
+<body>
+  <!-- Animated lines background canvas (behind content) -->
+  <canvas id="bgLines" class="bg-lines" aria-hidden="true"></canvas>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="#">HealthyTrack</a>
+      <nav class="nav">
+        <a href="#card">Nutrition card</a>
+        <a href="#tracker">Daily tracker</a>
+        <a href="#quiz">Quiz</a>
+        <a href="#chatbot">AI Coach</a>
+      </nav>
+
+      <div class="auth-controls" id="authControls"></div>
+
+      <div class="header-actions">
+        <button id="chatbotToggle" class="btn ghost" title="Open AI fitness coach">💬 AI Coach</button>
+        <a id="openCharts" class="btn ghost" href="{{ url_for('charts_page') }}">📊 Charts</a>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Nutrition Card -->
+    <section id="card" class="card">
+      <h2 class="neon-title">AI & Camera powered nutrition card</h2>
+      <p class="muted">Upload an image of a single food item or choose a popular dish to view macros and calories.</p>
+
+      <div class="card-row">
+        <div class="upload-block">
+          <label class="file-label">
+            <input type="file" accept="image/*" capture="environment" id="imageInput" />
+            <span class="file-btn">📷 Use camera / Upload</span>
+          </label>
+
+          <div class="preview">
+            <canvas class="neon-bg" aria-hidden="true"></canvas>
+            <img id="previewImg" alt="preview" />
+          </div>
+
+          <div class="actions">
+            <button id="analyzeBtn" class="btn primary">Analyze image (AI)</button>
+            <button id="clearImgBtn" class="btn ghost">Clear</button>
+          </div>
+        </div>
+
+        <div class="search-block">
+          <label class="label-text">Search popular dishes</label>
+          <input id="dishSearch" class="input" placeholder="e.g., dal, roti, biryani" />
+          <div id="dishList" class="dish-list"></div>
+        </div>
+      </div>
+
+      <div id="nutritionCard" class="nutrition-card">
+        <p class="muted small">No card yet. Upload an image or select a dish.</p>
+      </div>
+    </section>
+
+    <!-- Daily tracker -->
+    <section id="tracker" class="card">
+      <h2 class="neon-title">Daily tracker & analysis</h2>
+      <p class="muted">Log your meals. We’ll total calories and macros against your goal.</p>
+
+      <form id="addForm" class="form">
+        <div class="row">
+          <label>
+            <span class="label-text">Food</span>
+            <input id="foodName" class="input" placeholder="e.g., Dal Tadka" required />
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            <span class="label-text">Calories</span>
+            <input id="calories" class="input" type="number" min="0" value="0" />
+          </label>
+          <label>
+            <span class="label-text">Protein g</span>
+            <input id="protein" class="input" type="number" min="0" value="0" />
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            <span class="label-text">Carbs g</span>
+            <input id="carbs" class="input" type="number" min="0" value="0" />
+          </label>
+          <label>
+            <span class="label-text">Fat g</span>
+            <input id="fat" class="input" type="number" min="0" value="0" />
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Add to day</button>
+          <button type="button" id="clearDayBtn" class="btn ghost">Clear day</button>
+        </div>
+      </form>
+
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-value" id="sumCal">0</div><div class="stat-label">Calories</div></div>
+        <div class="stat"><div class="stat-value" id="sumPro">0</div><div class="stat-label">Protein g</div></div>
+        <div class="stat"><div class="stat-value" id="sumCarb">0</div><div class="stat-label">Carbs g</div></div>
+        <div class="stat"><div class="stat-value" id="sumFat">0</div><div class="stat-label">Fat g</div></div>
+      </div>
+
+      <div class="goal-row">
+        <label class="label-text">Calorie goal</label>
+        <input id="goalInput" class="input small" type="number" min="0" value="2000" />
+        <button id="setGoalBtn" class="btn ghost">Set</button>
+      </div>
+
+      <div class="bars">
+        <div class="bar">
+          <span>Protein</span><div class="bar-track"><div id="barPro" class="bar-fill"></div></div>
+        </div>
+        <div class="bar">
+          <span>Carbs</span><div class="bar-track"><div id="barCarb" class="bar-fill"></div></div>
+        </div>
+        <div class="bar">
+          <span>Fat</span><div class="bar-track"><div id="barFat" class="bar-fill"></div></div>
+        </div>
+        <div class="bar">
+          <span>Calories vs goal</span><div class="bar-track"><div id="barCal" class="bar-fill"></div></div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Today's entries</h3>
+      <div id="entries" class="entries">
+        <p class="muted small">No entries yet.</p>
+      </div>
+    </section>
+
+    <!-- Quiz -->
+    <section id="quiz" class="card">
+      <h2 class="neon-title">Nutrition knowledge quiz</h2>
+      <p class="muted">10 questions. Scores saved per user.</p>
+      <div id="quizArea">
+        <div id="quizIntro">
+          <button id="startQuiz" class="btn primary">Start quiz</button>
+        </div>
+        <div id="quizQ" class="quizQ" hidden>
+          <div id="qText" class="q-text"></div>
+          <div id="qOpts" class="q-opts"></div>
+          <div class="form-actions">
+            <button id="nextQ" class="btn primary">Next</button>
+            <button id="quitQ" class="btn ghost">Quit</button>
+          </div>
+        </div>
+        <div id="quizResult" hidden>
+          <h3 class="section-title">Result</h3>
+          <p id="scoreText"></p>
+          <button id="retakeQ" class="btn primary">Retake</button>
+        </div>
+      </div>
+    <!-- AI Fitness Coach -->
+    <section id="chatbot" class="card">
+      <h2 class="neon-title">💪 AI Fitness Coach</h2>
+      <p class="muted">Ask questions about nutrition, fitness, macros, and health tips!</p>
+      
+      <div id="chatbotContainer" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div id="chatHistory" style="background: #f8f9fa; border-radius: 8px; padding: 1rem; min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd;">
+          <p class="muted small">Start asking fitness questions...</p>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+          <input id="chatInput" class="input" placeholder="e.g., How do I get more protein?" style="flex: 1;" />
+          <button id="chatSendBtn" class="btn primary">Send</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <button id="chatQuickProtein" class="btn ghost" data-query="Tell me about protein">💪 Protein</button>
+          <button id="chatQuickCalories" class="btn ghost" data-query="How do I lose weight with calories">🔥 Weight Loss</button>
+          <button id="chatQuickCarbs" class="btn ghost" data-query="What about carbs for energy">⚡ Carbs & Energy</button>
+          <button id="chatQuickSleep" class="btn ghost" data-query="Tell me about sleep recovery">😴 Sleep</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="muted small">© <span id="year"></span> HealthyTrack — prototype</p>
+    </div>
+  </footer>
+
+  <!-- Auth modal -->
+  <div id="authModal" class="modal" hidden>
+    <div class="modal-card">
+      <button id="closeAuth" class="modal-close" aria-label="Close">✕</button>
+      <h3 id="authTitle">Login</h3>
+      <form id="authForm">
+        <label><span class="label-text">Username</span><input id="authUser" class="input" required /></label>
+        <label><span class="label-text">Password</span><input id="authPass" class="input" type="password" required /></label>
+        <div class="form-actions">
+          <button type="submit" id="authSubmit" class="btn primary">Login</button>
+          <button type="button" id="switchMode" class="btn ghost">Switch to Sign up</button>
+        </div>
+      </form>
+      <div id="authMsg" class="muted small"></div>
+    </div>
+  </div>
+
+  <script src="/static/auth.js"></script>
+  <script src="/static/app.js"></script>
+
+  <!-- Animated lines background for index page -->
+  <script>
+  (function(){
+    const canvas = document.getElementById('bgLines');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w=0,h=0,t=0;
+    function resize(){
+      const dpr = window.devicePixelRatio || 1;
+      w = Math.max(300, window.innerWidth);
+      h = Math.max(300, window.innerHeight);
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    function drawWave(y, amp, wl, speed, hue, alphaOffset){
+      ctx.beginPath();
+      const off = t * speed;
+      ctx.moveTo(0, y);
+      for(let x=0;x<=w;x+=6){
+        const y1 = y + Math.sin((x / wl) + off) * amp;
+        ctx.lineTo(x, y1);
+      }
+      ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+      const g = ctx.createLinearGradient(0, y-amp, 0, h);
+      g.addColorStop(0, `hsla(${hue},90%,60%,${0.06 + alphaOffset})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fill();
+    }
+    function render(){
+      t += 0.01;
+      ctx.clearRect(0,0,w,h);
+      // soft base
+      ctx.fillStyle = 'rgba(250,250,255,0.6)'; ctx.fillRect(0,0,w,h);
+      drawWave(h * 0.20, 18, 220, 0.45, 320, 0.02);
+      drawWave(h * 0.35, 26, 300, 0.35, 300, 0.03);
+      drawWave(h * 0.55, 34, 420, 0.25, 260, 0.04);
+      requestAnimationFrame(render);
+    }
+    resize(); window.addEventListener('resize', resize);
+    requestAnimationFrame(render);
+  })();
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HealthyTrack — Charts</title>
+  <link rel="stylesheet" href="/static/styles (2).css" />
+</head>
+<body>
+  <div class="charts-bg" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="{{ url_for('app_page') }}">HealthyTrack</a>
+      <div style="margin-left:auto; display:flex; gap:.5rem; align-items:center;">
+        <button id="loadChartsBtn" class="btn primary">Load charts</button>
+        <button id="saveAllBtn" class="btn ghost" title="Save all visible charts to your account">Save all</button>
+        <a class="btn ghost" href="{{ url_for('app_page') }}">Back</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2 class="neon-title">Your charts</h2>
+      <p class="muted">Charts load only when you click Load charts. Saved charts are stored per user.</p>
+
+      <div class="charts-grid small-charts">
+        <div class="chart-card">
+          <h4 class="section-title">Calories vs Goal</h4>
+          <div class="canvas-wrap"><canvas id="calGoalChart"></canvas></div>
+          <div class="form-actions" style="margin-top:.5rem;">
+            <button id="saveCalBtn" class="btn ghost">Save chart</button>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h4 class="section-title">Macros Breakdown</h4>
+          <div class="canvas-wrap"><canvas id="macroPieChart"></canvas></div>
+          <div class="form-actions" style="margin-top:.5rem;">
+            <button id="saveMacroBtn" class="btn ghost">Save chart</button>
+          </div>
+        </div>
+
+        <div class="chart-card full-width">
+          <h4 class="section-title">Last 7 Days — Calories</h4>
+          <div class="canvas-wrap"><canvas id="historyLineChart"></canvas></div>
+          <div class="form-actions" style="margin-top:.5rem;">
+            <button id="saveHistBtn" class="btn ghost">Save chart</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="savedList" style="margin-top:1rem;"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="muted small">Charts load on demand • Data read from localStorage</p>
+    </div>
+  </footer>
+
+  <script>
+    // dynamically load Chart.js and initialize charts
+    document.getElementById('loadChartsBtn').addEventListener('click', async function () {
+      const btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Loading charts…';
+
+      if(!window.Chart){
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        s.onload = () => initChartsPage();
+        s.onerror = () => { 
+          alert('Failed to load charts library. Check your internet connection.'); 
+          btn.disabled = false; 
+          btn.textContent = 'Load charts'; 
+        };
+        document.head.appendChild(s);
+      } else {
+        initChartsPage();
+      }
+    });
+
+    let calChart, macroChart, histChart;
+
+    async function initChartsPage(){
+      try {
+        // Fetch all entries for the past 7 days from Flask API
+        const today = new Date();
+        const entries = [];
+        
+        // Fetch entries for today and past 6 days
+        for(let i = 0; i < 7; i++){
+          const d = new Date(today);
+          d.setDate(today.getDate() - (6 - i));
+          const dateStr = d.toISOString().split('T')[0];
+          
+          try {
+            const response = await fetch(`/api/get_entries?date=${dateStr}`);
+            if(response.ok){
+              const data = await response.json();
+              entries.push(...data.entries);
+            }
+          } catch(err) {
+            console.log(`Could not fetch entries for ${dateStr}:`, err);
+          }
+        }
+        
+        // Get today's summary
+        const summaryResponse = await fetch('/api/daily_summary?date=' + new Date().toISOString().split('T')[0]);
+        const summaryData = await summaryResponse.json();
+        const summary = summaryData.summary || {calories: 0, protein: 0, carbs: 0, fat: 0};
+        
+        const goal = 2000;
+        const remaining = Math.max(0, goal - summary.calories);
+        
+        // Build 7-day history
+        const map = {};
+        const dateLabels = [];
+        for(let i = 0; i < 7; i++){
+          const d = new Date(today);
+          d.setDate(today.getDate() - (6 - i));
+          const key = d.toISOString().slice(0,10);
+          dateLabels.push(key);
+          map[key] = 0;
+        }
+        
+        entries.forEach(e => {
+          const key = (new Date(e.created_at)).toISOString().slice(0,10);
+          if(key in map) map[key] += Number(e.calories)||0;
+        });
+        
+        const history = dateLabels.map(date => ({
+          date: date,
+          calories: map[date] || 0
+        }));
+        
+        // Create compact charts
+        const calCtx = document.getElementById('calGoalChart').getContext('2d');
+        calChart = new Chart(calCtx, {
+          type: 'doughnut',
+          data: { 
+            labels:['Consumed','Remaining'], 
+            datasets:[{ 
+              data:[summary.calories, remaining], 
+              backgroundColor:['#ff3cac','#e6eef0'] 
+            }] 
+          },
+          options: { 
+            plugins:{legend:{display:false}}, 
+            cutout:'70%', 
+            responsive:true, 
+            maintainAspectRatio:false 
+          }
+        });
+
+        const macroCtx = document.getElementById('macroPieChart').getContext('2d');
+        macroChart = new Chart(macroCtx, {
+          type: 'pie',
+          data: { 
+            labels:['Protein','Carbs','Fat'], 
+            datasets:[{ 
+              data:[summary.protein, summary.carbs, summary.fat], 
+              backgroundColor:['#00f5d4','#7b61ff','#ff3cac'] 
+            }] 
+          },
+          options: { 
+            plugins:{legend:{position:'bottom'}}, 
+            responsive:true, 
+            maintainAspectRatio:false 
+          }
+        });
+
+        const histCtx = document.getElementById('historyLineChart').getContext('2d');
+        histChart = new Chart(histCtx, {
+          type: 'line',
+          data: { 
+            labels: history.map(h => h.date.slice(5)), 
+            datasets:[{ 
+              label:'Calories', 
+              data: history.map(h => h.calories), 
+              borderColor:'#ff3cac', 
+              backgroundColor:'rgba(255,60,172,0.12)', 
+              fill:true, 
+              tension:0.3, 
+              pointRadius:3 
+            }] 
+          },
+          options: { 
+            plugins:{legend:{display:false}}, 
+            scales:{y:{beginAtZero:true}}, 
+            responsive:true, 
+            maintainAspectRatio:false 
+          }
+        });
+
+        // wire save buttons
+        document.getElementById('saveCalBtn').addEventListener('click', () => saveChartImage(calChart, 'calories-vs-goal'));
+        document.getElementById('saveMacroBtn').addEventListener('click', () => saveChartImage(macroChart, 'macros-breakdown'));
+        document.getElementById('saveHistBtn').addEventListener('click', () => saveChartImage(histChart, '7day-history'));
+        document.getElementById('saveAllBtn').addEventListener('click', saveAllCharts);
+
+        // show saved list
+        renderSavedList();
+
+        const btn = document.getElementById('loadChartsBtn');
+        btn.textContent = 'Charts loaded';
+        btn.disabled = true;
+      } catch(error) {
+        console.error('Error initializing charts:', error);
+        alert('Error loading charts. Make sure you are logged in.');
+        const btn = document.getElementById('loadChartsBtn');
+        btn.disabled = false;
+        btn.textContent = 'Load charts';
+      }
+    }
+
+    function saveChartImage(chartInstance, name){
+      try{
+        const canvas = chartInstance.canvas;
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Store in localStorage as backup
+        const savedCharts = JSON.parse(localStorage.getItem('savedCharts') || '[]');
+        savedCharts.push({ name, dataUrl, time: new Date().toISOString() });
+        localStorage.setItem('savedCharts', JSON.stringify(savedCharts));
+        
+        alert('Chart saved successfully.');
+        renderSavedList();
+      }catch(err){
+        console.error(err);
+        alert('Failed to save chart.');
+      }
+    }
+
+    function saveAllCharts(){
+      if(calChart) saveChartImage(calChart, 'calories-vs-goal');
+      if(macroChart) saveChartImage(macroChart, 'macros-breakdown');
+      if(histChart) saveChartImage(histChart, '7day-history');
+    }
+
+    function renderSavedList(){
+      const container = document.getElementById('savedList');
+      container.innerHTML = '';
+      const savedCharts = JSON.parse(localStorage.getItem('savedCharts') || '[]');
+      
+      if(!savedCharts.length){
+        container.innerHTML = '<p class="muted small">No saved charts yet.</p>';
+        return;
+      }
+      
+      const list = document.createElement('div');
+      list.style.display = 'grid';
+      list.style.gridTemplateColumns = 'repeat(auto-fit, minmax(140px, 1fr))';
+      list.style.gap = '8px';
+      
+      savedCharts.slice().reverse().forEach((s, i) => {
+        const card = document.createElement('div');
+        card.style.background = '#fff';
+        card.style.border = '1px solid #eef1f5';
+        card.style.borderRadius = '8px';
+        card.style.padding = '6px';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.alignItems = 'center';
+        card.style.gap = '6px';
+        
+        const img = document.createElement('img');
+        img.src = s.dataUrl;
+        img.alt = s.name;
+        img.style.width = '100%';
+        img.style.height = '80px';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '6px';
+        
+        const meta = document.createElement('div');
+        meta.style.fontSize = '12px';
+        meta.style.color = '#60646c';
+        meta.textContent = `${s.name} • ${new Date(s.time).toLocaleString()}`;
+        
+        card.appendChild(img);
+        card.appendChild(meta);
+        list.appendChild(card);
+      });
+      
+      container.appendChild(list);
+    }
+  </script>
+</body>
+</html>
