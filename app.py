@@ -1,8 +1,3 @@
-# Project:health-Tracker - Flask backend + index.html
-
-# -------------------------
-# app.py
-# -------------------------
 from flask import Flask, request, jsonify, render_template, send_from_directory, session
 import sqlite3
 import os
@@ -638,5 +633,6 @@ def image_recognition_placeholder(image_path):
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 
 
